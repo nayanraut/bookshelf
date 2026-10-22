@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Bookshelf — Read & Want to Read Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lora:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <span class="brand-icon">📚</span>
+        <div class="brand-text">
+          <h1>My Bookshelf</h1>
+          <p class="tagline">Personal library & reading tracker</p>
+        </div>
+      </div>
+
+      <!-- Quick Stats Badges -->
+      <div class="header-stats" id="headerStats">
+        <div class="stat-pill">
+          <span class="stat-num" id="statTotal">0</span>
+          <span class="stat-label">Total Books</span>
+        </div>
+        <div class="stat-pill stat-want">
+          <span class="stat-num" id="statWant">0</span>
+          <span class="stat-label">Want to Read</span>
+        </div>
+        <div class="stat-pill stat-reading">
+          <span class="stat-num" id="statReading">0</span>
+          <span class="stat-label">Reading</span>
+        </div>
+        <div class="stat-pill stat-read">
+          <span class="stat-num" id="statRead">0</span>
+          <span class="stat-label">Have Read</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="themeToggleBtn" class="btn btn-icon" title="Toggle Dark/Light Mode">
+          <span id="themeIcon">🌙</span>
+        </button>
+        <button id="openAddModalBtn" class="btn btn-primary">
+          <span class="btn-icon-plus">+</span> Add Book
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+    <!-- Controls Bar: Tabs, Search, Sorting -->
+    <section class="controls-section">
+      <!-- Status Tabs -->
+      <div class="status-tabs" role="tablist">
+        <button class="tab-btn active" data-status="all" role="tab" aria-selected="true">
+          All Books <span class="tab-count" id="countAll">0</span>
+        </button>
+        <button class="tab-btn" data-status="want_to_read" role="tab" aria-selected="false">
+          🔖 Want to Read <span class="tab-count" id="countWant">0</span>
+        </button>
+        <button class="tab-btn" data-status="reading" role="tab" aria-selected="false">
+          📖 Reading <span class="tab-count" id="countReading">0</span>
+        </button>
+        <button class="tab-btn" data-status="read" role="tab" aria-selected="false">
+          ✅ Have Read <span class="tab-count" id="countRead">0</span>
+        </button>
+      </div>
+
+      <!-- Filters & Sorting -->
+      <div class="filter-controls">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="librarySearchInput" placeholder="Filter by title, author, or genre..." aria-label="Filter books">
+          <button id="clearSearchBtn" class="clear-btn" style="display: none;">✕</button>
+        </div>
+
+        <div class="sort-box">
+          <label for="sortSelect">Sort:</label>
+          <select id="sortSelect">
+            <option value="newest">Recently Added</option>
+            <option value="title_asc">Title (A - Z)</option>
+            <option value="rating_desc">Highest Rated</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+
+        <div class="view-toggle">
+          <button id="viewGridBtn" class="view-btn active" title="Grid View">🔲</button>
+          <button id="viewListBtn" class="view-btn" title="List View">☰</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Books Display Area -->
+    <section class="books-section">
+      <!-- Loading State -->
+      <div id="loadingState" class="loading-state" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading your bookshelf...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">📖</div>
+        <h3 id="emptyTitle">Your shelf is empty</h3>
+        <p id="emptySubtitle">Start building your collection by adding books you've read or want to read!</p>
+        <button id="emptyAddBtn" class="btn btn-primary">+ Add Your First Book</button>
+      </div>
+
+      <!-- Book Grid Container -->
+      <div id="booksContainer" class="books-grid"></div>
+    </section>
+  </main>
+
+  <!-- ================= ADD / EDIT BOOK MODAL ================= -->
+  <div id="bookModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalTitle">Add Book to Bookshelf</h2>
+          <p class="modal-subtitle">Type the book name and we'll auto-populate the details from the web!</p>
+        </div>
+        <button class="modal-close-btn" id="closeModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="bookForm" novalidate>
+        <input type="hidden" id="editBookId" value="">
+
+        <!-- Title Input with Auto-populate suggestions -->
+        <div class="form-group relative">
+          <label for="bookTitleInput">
+            Book Title <span class="required">*</span>
+            <span class="label-hint">(Start typing to auto-fetch details)</span>
+          </label>
+          <div class="input-with-spinner">
+            <input type="text" id="bookTitleInput" placeholder="e.g. Atomic Habits, The Hobbit, Sapiens..." autocomplete="off" required>
+            <div id="searchSpinner" class="input-spinner" style="display: none;"></div>
+          </div>
+          
+          <!-- Autocomplete Dropdown List -->
+          <div id="suggestionsDropdown" class="suggestions-dropdown" style="display: none;"></div>
+          
+          <!-- Auto-populate feedback banner -->
+          <div id="autoPopulateBanner" class="auto-banner" style="display: none;">
+            <span>✨ Automatically populated from internet</span>
+            <button type="button" id="dismissBannerBtn" class="banner-dismiss">✕</button>
+          </div>
+        </div>
+
+        <!-- Two Column Layout: Cover preview & Book metadata -->
+        <div class="form-grid-columns">
+          <!-- Left: Cover Preview -->
+          <div class="cover-preview-column">
+            <label>Cover Preview</label>
+            <div class="cover-card-preview" id="coverPreviewContainer">
+              <img id="coverPreviewImg" src="" alt="Book Cover Preview" style="display: none;">
+              <div id="coverPlaceholder" class="cover-placeholder">
+                <span>📚</span>
+                <p>No cover image</p>
+              </div>
+            </div>
+            <input type="url" id="bookCoverInput" placeholder="Image URL (auto-filled)" class="cover-url-input">
+          </div>
+
+          <!-- Right: Book Metadata Inputs -->
+          <div class="meta-fields-column">
+            <!-- Author -->
+            <div class="form-group">
+              <label for="bookAuthorInput">Author(s)</label>
+              <input type="text" id="bookAuthorInput" placeholder="e.g. James Clear">
+            </div>
+
+            <!-- Genre / Categories -->
+            <div class="form-group">
+              <label for="bookGenreInput">Genre / Categories</label>
+              <input type="text" id="bookGenreInput" placeholder="e.g. Self-Help, Psychology, Business">
+            </div>
+
+            <!-- Reading Status -->
+            <div class="form-group">
+              <label>Reading Status <span class="required">*</span></label>
+              <div class="status-radio-group">
+                <label class="status-radio-label">
+                  <input type="radio" name="bookStatus" value="want_to_read" checked>
+                  <span class="status-chip chip-want">🔖 Want to Read</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="bookStatus" value="reading">
+                  <span class="status-chip chip-reading">📖 Currently Reading</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="bookStatus" value="read">
+                  <span class="status-chip chip-read">✅ Have Read</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Rating (Shown prominently if status is "read") -->
+            <div class="form-group" id="ratingGroup">
+              <label>Your Rating</label>
+              <div class="star-rating" id="starRatingPicker">
+                <span class="star" data-rating="1">★</span>
+                <span class="star" data-rating="2">★</span>
+                <span class="star" data-rating="3">★</span>
+                <span class="star" data-rating="4">★</span>
+                <span class="star" data-rating="5">★</span>
+                <span class="rating-text" id="ratingText">Not rated</span>
+              </div>
+              <input type="hidden" id="bookRatingInput" value="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Description / Summary -->
+        <div class="form-group">
+          <label for="bookDescInput">Description / Synopsis</label>
+          <textarea id="bookDescInput" rows="3" placeholder="A brief summary of the book (auto-filled from the web)..."></textarea>
+        </div>
+
+        <!-- Personal Notes / Review -->
+        <div class="form-group">
+          <label for="bookReviewInput">Personal Notes / Review <span class="label-hint">(Optional)</span></label>
+          <textarea id="bookReviewInput" rows="2" placeholder="Your key takeaways, thoughts, or quotes..."></textarea>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveBookBtn">Save to Bookshelf</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= BOOK DETAILS / VIEW MODAL ================= -->
+  <div id="detailsModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content modal-details" role="dialog" aria-modal="true">
+      <button class="modal-close-btn" id="closeDetailsBtn" aria-label="Close details">✕</button>
+      
+      <div class="details-body" id="detailsContent">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container for Notifications -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
